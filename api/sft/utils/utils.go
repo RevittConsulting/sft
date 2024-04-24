@@ -17,7 +17,7 @@ type ErrResponse struct {
 func TxBegin(ctx context.Context, pool *pgxpool.Pool) (pgx.Tx, error) {
 	tx, err := pool.Begin(ctx)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error starting transaction: %w", err)
 	}
 	return tx, nil
 }
