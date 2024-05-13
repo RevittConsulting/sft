@@ -11,14 +11,13 @@ import (
 
 func TestEnableDisableToggle(t *testing.T) {
 
-	tests := []struct {
-		name               string
+	scenarios := map[string]struct {
 		toggle             sft.ToggleDto
 		expectedEnableBool bool
 		expectedError      error
 	}{
-		{
-			"disabling enabled feature",
+
+		"disabling enabled feature": {
 			sft.ToggleDto{
 				uuid.New(),
 				"originally enabled toggle",
@@ -31,8 +30,8 @@ func TestEnableDisableToggle(t *testing.T) {
 			false,
 			nil,
 		},
-		{
-			"enabling disabled feature",
+
+		"enabling disabled feature": {
 			sft.ToggleDto{
 				uuid.New(),
 				"originally disabled toggle",
@@ -47,16 +46,16 @@ func TestEnableDisableToggle(t *testing.T) {
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
+	for name, scenario := range scenarios {
+		t.Run(name, func(t *testing.T) {
 			// create toggle
-			toggleId, err := sftService.CreateToggle(context.Background(), test.toggle)
+			toggleId, err := sftService.CreateToggle(context.Background(), scenario.toggle)
 			if err != nil {
 				t.Errorf("Unexpected error: %s", err)
 			}
 
 			// enable/disable
-			if test.toggle.Enabled {
+			if scenario.toggle.Enabled {
 				err = sftService.DisableFeature(context.Background(), toggleId.Id)
 				if err != nil {
 					t.Errorf("Unexpected error: %s", err)
@@ -75,14 +74,14 @@ func TestEnableDisableToggle(t *testing.T) {
 			var currentToggle *sft.Toggle
 
 			for _, toggle := range allToggles {
-				if toggle.FeatureName == test.toggle.FeatureName {
+				if toggle.FeatureName == scenario.toggle.FeatureName {
 					currentToggle = toggle
 				}
 			}
 
 			fmt.Printf("%+v\n", currentToggle)
 
-			assert.Equal(t, test.expectedEnableBool, currentToggle.Enabled)
+			assert.Equal(t, scenario.expectedEnableBool, currentToggle.Enabled)
 
 		})
 	}
@@ -90,7 +89,7 @@ func TestEnableDisableToggle(t *testing.T) {
 	// clear DB of entries after this test
 	err := ClearDatabase(context.Background(), dbPool)
 	if err != nil {
-		fmt.Println("problem clearing DB")
+		t.Errorf("problem clearing DB")
 	}
 
 }

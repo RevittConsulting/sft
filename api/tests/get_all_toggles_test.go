@@ -2,7 +2,6 @@ package tests
 
 import (
 	"context"
-	"fmt"
 	"github.com/RevittConsulting/sft/sft"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -58,7 +57,7 @@ func TestGetAllTestToggles(t *testing.T) {
 	// clear DB of entries after this test
 	err = ClearDatabase(context.Background(), dbPool)
 	if err != nil {
-		fmt.Println("problem clearing DB")
+		t.Errorf("problem clearing DB")
 	}
 
 }

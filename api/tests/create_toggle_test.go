@@ -31,12 +31,11 @@ func TestCreateToggle(t *testing.T) {
 	}
 	_ = initialToggle
 
-	var tests = []struct {
-		name          string
+	var scenarios = map[string]struct {
 		toggle        sft.ToggleDto
 		expectedError error
 	}{
-		{"creating a normal toggle",
+		"creating a normal toggle": {
 			sft.ToggleDto{
 				FeatureName: "test feature 1",
 				ToggleMeta: sft.ToggleMeta{
@@ -47,20 +46,20 @@ func TestCreateToggle(t *testing.T) {
 			},
 			nil,
 		},
-		{"creating a pre-existing toggle",
+		"creating a pre-existing toggle": {
 			duplicateToggle,
 			fmt.Errorf("toggle of that name already exists"),
 		},
 	}
 
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			toggleId, err := sftService.CreateToggle(context.Background(), test.toggle)
-			if test.expectedError != nil {
+	for name, scenario := range scenarios {
+		t.Run(name, func(t *testing.T) {
+			toggleId, err := sftService.CreateToggle(context.Background(), scenario.toggle)
+			if scenario.expectedError != nil {
 				if err == nil {
 					t.Errorf("Expected error but got nil")
-				} else if !strings.Contains(err.Error(), test.expectedError.Error()) {
-					t.Errorf("Expected error %q, got %q", test.expectedError, err)
+				} else if !strings.Contains(err.Error(), scenario.expectedError.Error()) {
+					t.Errorf("Expected error %q, got %q", scenario.expectedError, err)
 				}
 			} else {
 				if err != nil {
@@ -75,7 +74,7 @@ func TestCreateToggle(t *testing.T) {
 	// clear DB of entries after this test
 	err = ClearDatabase(context.Background(), dbPool)
 	if err != nil {
-		fmt.Println("problem clearing DB")
+		t.Errorf("problem clearing DB")
 	}
 
 }

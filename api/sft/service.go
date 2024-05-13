@@ -2,9 +2,9 @@ package sft
 
 import (
 	"context"
-	"fmt"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log"
 )
 
 // interface for the service
@@ -22,16 +22,7 @@ type Service struct {
 
 // based on srt, takes a db, context, and pool, all of which that are created in the calling application, returns a service
 func NewService(db ISimpleFeatureToggleDb, ctx context.Context, pool *pgxpool.Pool) *Service {
-	fmt.Println("new service!")
-
-	// THIS MIGRATIONS STUFF IS NOW DONE IN THE BASE_TEST FILE
-	//if err := RunDbMigrations(ctx, pool); err != nil {
-	//	panic(err)
-	//}
-	//
-	//if err := RunDbSeed(ctx, pool); err != nil {
-	//	log.Println("db seed failed")
-	//}
+	log.Println("new service!")
 
 	s := &Service{
 		db: db,

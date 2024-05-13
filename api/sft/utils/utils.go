@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log"
 	"net/http"
 )
 
@@ -26,7 +27,7 @@ func TxDefer(tx pgx.Tx, ctx context.Context) {
 	err := tx.Rollback(ctx)
 	if err != nil {
 		if err != pgx.ErrTxClosed {
-			fmt.Println("TxDefer error...")
+			log.Println("TxDefer error...")
 		}
 	}
 
@@ -50,7 +51,7 @@ func WriteJSON(w http.ResponseWriter, v interface{}) {
 	w.Header().Add("Content-Type", "application/json")
 	_, err := w.Write(buffer.Bytes())
 	if err != nil {
-		fmt.Errorf("error writing JSON to response: %v", err)
+		log.Println("error writing JSON to response: %v", err)
 	}
 }
 
@@ -64,9 +65,7 @@ func WriteErr(w http.ResponseWriter, err error, code int) {
 	case "unauthorised":
 		w.WriteHeader(http.StatusUnauthorized)
 		WriteJSON(w, ErrResponse{Error: err.Error()})
-	// case *errors.UnauthorizedError:
-	// 	w.WriteHeader(e.ResponseCode)
-	// 	WriteJSON(w, ErrResponse{Error: e.ClientError})
+
 	default:
 		w.WriteHeader(code)
 		WriteJSON(w, ErrResponse{Error: err.Error()})

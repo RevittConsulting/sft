@@ -49,7 +49,7 @@ func (h *Handler) GetAllToggles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateToggle(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("creating toggle")
+	log.Println("creating toggle")
 	toggleDto := &ToggleDto{}
 
 	err := json.NewDecoder(r.Body).Decode(toggleDto)
@@ -65,7 +65,7 @@ func (h *Handler) CreateToggle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DisableFeature(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("disabling feature")
+	log.Println("disabling feature")
 	toggleId, err := uuid.Parse(chi.URLParam(r, "toggle-id"))
 	if err != nil {
 		message := fmt.Errorf("error parsing uuid: %w", err)
@@ -84,7 +84,7 @@ func (h *Handler) DisableFeature(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) EnableFeature(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("enabling feature")
+	log.Println("enabling feature")
 	toggleId, err := uuid.Parse(chi.URLParam(r, "toggle-id"))
 	if err != nil {
 		message := fmt.Errorf("error parsing uuid: %w", err)
