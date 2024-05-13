@@ -137,6 +137,8 @@ func CreatePgxPool(ctx context.Context, container *postgres.PostgresContainer) (
 		return nil, err
 	}
 
+	dbPool = pool
+
 	return pool, nil
 }
 
@@ -161,6 +163,21 @@ func RunMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 
 	err = ternMigrator.Migrate(ctx)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ClearDatabase(ctx context.Context, pool *pgxpool.Pool) error {
+	conn, err := pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+
+	_, err = conn.Exec(ctx, "TRUNCATE TABLE sft.feature_toggles CASCADE;")
 	if err != nil {
 		return err
 	}

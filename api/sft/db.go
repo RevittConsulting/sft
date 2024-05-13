@@ -97,7 +97,7 @@ func (db *Db) EnableFeature(ctx context.Context, toggleId uuid.UUID) error {
 	if err != nil {
 		return fmt.Errorf("error updating toggle: %w", err)
 	}
-	utils.TxDefer(tx, ctx)
+	defer utils.TxDefer(tx, ctx)
 
 	result, err := tx.Exec(ctx, sql, toggleId)
 	if err != nil {

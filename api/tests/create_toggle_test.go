@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"fmt"
 	"github.com/RevittConsulting/sft/sft"
 	"github.com/stretchr/testify/assert"
 	"strings"
@@ -48,7 +49,7 @@ func TestCreateToggle(t *testing.T) {
 		},
 		{"creating a pre-existing toggle",
 			duplicateToggle,
-			nil,
+			fmt.Errorf("toggle of that name already exists"),
 		},
 	}
 
@@ -70,4 +71,11 @@ func TestCreateToggle(t *testing.T) {
 			}
 		})
 	}
+
+	// clear DB of entries after this test
+	err = ClearDatabase(context.Background(), dbPool)
+	if err != nil {
+		fmt.Println("problem clearing DB")
+	}
+
 }
