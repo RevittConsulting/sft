@@ -21,7 +21,21 @@ func NewHandler(r chi.Router, s *Service) *Handler {
 		s: s,
 	}
 	h.SetupRoutes(r)
+	go StartDashboard("6969")
 	return h
+}
+
+func StartDashboard(port string) {
+
+	// TODO: sort out path to the dashboard
+	fs := http.FileServer(http.Dir("/Users/maxbb/github/revitt/sft/web/dashboard"))
+	http.Handle("/", fs)
+
+	log.Printf("Starting dashboard server on http://localhost:%s/", port)
+	err := http.ListenAndServe(":"+port, nil)
+	if err != nil {
+		log.Fatalf("Dashboard server failed to start: %v", err)
+	}
 }
 
 func (h *Handler) SetupRoutes(router chi.Router) {
