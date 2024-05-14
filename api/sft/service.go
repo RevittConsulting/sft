@@ -11,9 +11,10 @@ import (
 type ISimpleFeatureToggleDb interface {
 	CheckToggleExists(ctx context.Context, featureName string) (bool, error)
 	CreateToggle(ctx context.Context, toggleDto ToggleDto) (*ToggleId, error)
-	DisableFeature(ctx context.Context, toggleId uuid.UUID) error
-	EnableFeature(ctx context.Context, toggleId uuid.UUID) error
+	ToggleFeature(ctx context.Context, toggleId uuid.UUID) error
 	GetAllToggles(ctx context.Context) ([]*Toggle, error)
+	DeleteToggle(ctx context.Context, toggleId uuid.UUID) error
+	CheckFeatureIsEnabled(ctx context.Context, featureName string) (*Enabled, error)
 }
 
 type Service struct {
@@ -28,6 +29,11 @@ func NewService(db ISimpleFeatureToggleDb, ctx context.Context, pool *pgxpool.Po
 		db: db,
 	}
 
+	err := RunDbMigrations(ctx, pool)
+	if err != nil {
+		log.Println("Failed to run db migrations")
+	}
+
 	return s
 }
 
@@ -35,14 +41,19 @@ func (s *Service) CreateToggle(ctx context.Context, toggleDto ToggleDto) (*Toggl
 	return s.db.CreateToggle(ctx, toggleDto)
 }
 
-func (s *Service) DisableFeature(ctx context.Context, toggleId uuid.UUID) error {
-	return s.db.DisableFeature(ctx, toggleId)
-}
-
-func (s *Service) EnableFeature(ctx context.Context, toggleId uuid.UUID) error {
-	return s.db.EnableFeature(ctx, toggleId)
+func (s *Service) ToggleFeature(ctx context.Context, toggleId uuid.UUID) error {
+	return s.db.ToggleFeature(ctx, toggleId)
 }
 
 func (s *Service) GetAllToggles(ctx context.Context) ([]*Toggle, error) {
 	return s.db.GetAllToggles(ctx)
+}
+
+func (s *Service) DeleteToggle(ctx context.Context, toggleId uuid.UUID) error {
+	return s.db.DeleteToggle(ctx, toggleId)
+}
+
+func (s *Service) CheckFeatureIsEnabled(ctx context.Context, featureName string) (*Enabled, error) {
+	log.Println("checking feature is enabled: ", featureName)
+	return s.db.CheckFeatureIsEnabled(ctx, featureName)
 }

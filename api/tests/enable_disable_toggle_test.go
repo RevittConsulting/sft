@@ -55,16 +55,9 @@ func TestEnableDisableToggle(t *testing.T) {
 			}
 
 			// enable/disable
-			if scenario.toggle.Enabled {
-				err = sftService.DisableFeature(context.Background(), toggleId.Id)
-				if err != nil {
-					t.Errorf("Unexpected error: %s", err)
-				}
-			} else {
-				err = sftService.EnableFeature(context.Background(), toggleId.Id)
-				if err != nil {
-					t.Errorf("Unexpected error: %s", err)
-				}
+			err = sftService.ToggleFeature(context.Background(), toggleId.Id)
+			if err != nil {
+				t.Errorf("Unexpected error: %s", err)
 			}
 			// find updated toggle and check enabled bool
 			allToggles, err := sftService.GetAllToggles(context.Background())

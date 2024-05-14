@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"log"
 	"net/http"
+	"os"
 )
 
 // TODO: add some form of auth
@@ -27,11 +28,25 @@ func NewHandler(r chi.Router, s *Service) *Handler {
 
 func StartDashboard(port string) {
 
-	// TODO: sort out path to the dashboard
-	fs := http.FileServer(http.Dir("/Users/maxbb/github/revitt/sft/web/dashboard"))
-	http.Handle("/", fs)
+	//TODO: sort out path to the dashboard - this needs to be managed by a config when the dashboard is ready
+	buildPath := "/Users/maxbb/github/revitt/sft/web/dashboard/dist"
 
-	log.Printf("Starting dashboard server on http://localhost:%s/", port)
+	fs := http.FileServer(http.Dir(buildPath))
+
+	// this handler function is designed to allow us to serve a react app with react router
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		// Check if the requested file exists
+		path := buildPath + r.URL.Path
+		if _, err := os.Stat(path); os.IsNotExist(err) {
+			// If the file does not exist, serve index.html
+			http.ServeFile(w, r, buildPath+"/index.html")
+		} else {
+			// Otherwise, serve the file
+			fs.ServeHTTP(w, r)
+		}
+	})
+
+	log.Printf("Starting dashboard server on http://hello:%s/", port)
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
 		log.Fatalf("Dashboard server failed to start: %v", err)
@@ -47,8 +62,9 @@ func (h *Handler) SetupRoutes(router chi.Router) {
 
 			r.Post("/", h.CreateToggle)
 
-			r.Patch("/disable/{toggle-id}", h.DisableFeature)
-			r.Patch("/enable/{toggle_id}", h.EnableFeature)
+			r.Patch("/{toggle-id}", h.ToggleFeature)
+
+			r.Delete("/{toggle-id}", h.DeleteToggle)
 		})
 	})
 }
@@ -78,8 +94,8 @@ func (h *Handler) CreateToggle(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (h *Handler) DisableFeature(w http.ResponseWriter, r *http.Request) {
-	log.Println("disabling feature")
+func (h *Handler) ToggleFeature(w http.ResponseWriter, r *http.Request) {
+	log.Println("toggling feature")
 	toggleId, err := uuid.Parse(chi.URLParam(r, "toggle-id"))
 	if err != nil {
 		message := fmt.Errorf("error parsing uuid: %w", err)
@@ -87,7 +103,7 @@ func (h *Handler) DisableFeature(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.s.DisableFeature(r.Context(), toggleId)
+	err = h.s.ToggleFeature(r.Context(), toggleId)
 	if err != nil {
 		utils.WriteErr(w, err, http.StatusInternalServerError)
 		return
@@ -97,8 +113,8 @@ func (h *Handler) DisableFeature(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-func (h *Handler) EnableFeature(w http.ResponseWriter, r *http.Request) {
-	log.Println("enabling feature")
+func (h *Handler) DeleteToggle(w http.ResponseWriter, r *http.Request) {
+	log.Println("deleting toggle")
 	toggleId, err := uuid.Parse(chi.URLParam(r, "toggle-id"))
 	if err != nil {
 		message := fmt.Errorf("error parsing uuid: %w", err)
@@ -106,12 +122,10 @@ func (h *Handler) EnableFeature(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = h.s.EnableFeature(r.Context(), toggleId)
+	err = h.s.DeleteToggle(r.Context(), toggleId)
 	if err != nil {
 		utils.WriteErr(w, err, http.StatusInternalServerError)
 		return
 	}
 
-	utils.WriteJSON(w, fmt.Sprintf("toggle %v set to disabled", toggleId))
-	return
 }
