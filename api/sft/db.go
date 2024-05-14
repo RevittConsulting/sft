@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/RevittConsulting/sft/sft/utils"
 	"github.com/georgysavva/scany/v2/pgxscan"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -17,10 +18,6 @@ func NewDb(pool *pgxpool.Pool) *Db {
 	return &Db{pool: pool}
 }
 
-func (db *Db) TestDbFunc() {
-	fmt.Println("hello from the db func")
-}
-
 func (db *Db) CheckToggleExists(ctx context.Context, featureName string) (bool, error) {
 	var exists bool
 	sql := `select exists (select 1 from sft.feature_toggles where feature_name = $1)`
@@ -28,9 +25,94 @@ func (db *Db) CheckToggleExists(ctx context.Context, featureName string) (bool, 
 	err := pgxscan.Get(ctx, db.pool, &exists, sql, featureName)
 
 	if err != nil {
-		return false, err
+		return false, fmt.Errorf("error checking whether toggle exists: %w", err)
 	}
 	return exists, nil
+}
+
+func (db *Db) CreateToggle(ctx context.Context, toggleDto ToggleDto) (*ToggleId, error) {
+
+	tx, err := utils.TxBegin(ctx, db.pool)
+	if err != nil {
+		return nil, err
+	}
+
+	defer tx.Rollback(ctx)
+
+	exists, err := db.CheckToggleExists(ctx, toggleDto.FeatureName)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
+		return nil, fmt.Errorf("toggle of that name already exists")
+	}
+
+	sql := `insert into sft.feature_toggles (feature_name, toggle_meta, enabled) values ($1, $2, $3) returning id`
+
+	toggleId := &ToggleId{}
+
+	err = tx.QueryRow(ctx, sql, toggleDto.FeatureName, toggleDto.ToggleMeta, toggleDto.Enabled).Scan(&toggleId.Id)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting toggle: %w", err)
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return nil, fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return toggleId, nil
+}
+
+func (db *Db) DisableFeature(ctx context.Context, toggleId uuid.UUID) error {
+
+	sql := `update sft.feature_toggles set enabled = false where id = $1`
+
+	tx, err := utils.TxBegin(ctx, db.pool)
+	if err != nil {
+		return err
+	}
+	defer utils.TxDefer(tx, ctx)
+
+	result, err := tx.Exec(ctx, sql, toggleId)
+	if err != nil {
+		return fmt.Errorf("error updating toggle: %w", err)
+	}
+
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("no rows updated")
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (db *Db) EnableFeature(ctx context.Context, toggleId uuid.UUID) error {
+	sql := `update sft.feature_toggles set enabled = true where id = $1`
+
+	tx, err := utils.TxBegin(ctx, db.pool)
+	if err != nil {
+		return fmt.Errorf("error updating toggle: %w", err)
+	}
+	defer utils.TxDefer(tx, ctx)
+
+	result, err := tx.Exec(ctx, sql, toggleId)
+	if err != nil {
+		return err
+	}
+
+	if result.RowsAffected() == 0 {
+		return fmt.Errorf("no rows affected")
+	}
+
+	if err = tx.Commit(ctx); err != nil {
+		return fmt.Errorf("error committing transaction: %w", err)
+	}
+
+	return nil
 }
 
 func (db *Db) GetAllToggles(ctx context.Context) ([]*Toggle, error) {
