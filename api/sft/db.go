@@ -90,7 +90,7 @@ func (db *Db) ToggleFeature(ctx context.Context, toggleId uuid.UUID) error {
 }
 
 func (db *Db) GetAllToggles(ctx context.Context) ([]*Toggle, error) {
-	sql := `select * from sft.feature_toggles`
+	sql := `select id, feature_name, toggle_meta, enabled from sft.feature_toggles`
 
 	tx, err := utils.TxBegin(ctx, db.pool)
 	if err != nil {
@@ -125,6 +125,7 @@ func (db *Db) DeleteToggle(ctx context.Context, toggleId uuid.UUID) error {
 	defer utils.TxDefer(tx, ctx)
 
 	result, err := tx.Exec(ctx, sql, toggleId)
+	_ = result
 	if err != nil {
 		return fmt.Errorf("error removing toggle: %w", err)
 	}

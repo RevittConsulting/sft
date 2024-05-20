@@ -13,4 +13,26 @@ if enabled.Enabled != true {
     return
 }
 
-Find an example in fix issues.
+
+
+Here's how I've set it up in CHD:
+
+in server/setup.go
+
+Adding to the deps:
+// toggles
+sftDb := sft.NewDb(s.Pool)
+sftService := sft.NewService(sftDb, context.Background(), s.Pool)
+deps.sft = sftService
+
+Setting up the routes:
+// toggles stuff
+sftConfig := &sft.Config{
+Buildpath: "/Users/maxbb/github/revitt/sft/web/dashboard/dist",
+Port:      "6969",
+}
+	s.Router.Route("/api/sft/v1", func(r chi.Router) {
+		sft.NewHandler(r, s.Deps.sft, sftConfig)
+	})
+
+

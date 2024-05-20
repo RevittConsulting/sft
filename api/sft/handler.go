@@ -3,12 +3,15 @@ package sft
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/RevittConsulting/logger"
 	"github.com/RevittConsulting/sft/sft/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"go.uber.org/zap"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 )
 
 // TODO: add some form of auth
@@ -17,23 +20,37 @@ type Handler struct {
 	s *Service
 }
 
-func NewHandler(r chi.Router, s *Service) *Handler {
+type Config struct {
+	Buildpath string
+	Port      string
+}
+
+func NewHandler(r chi.Router, s *Service, cfg *Config) *Handler {
 	h := &Handler{
 		s: s,
 	}
 	h.SetupRoutes(r)
-	go StartDashboard("6969")
+	go StartDashboard(cfg)
 	return h
 }
 
-func StartDashboard(port string) {
+func StartDashboard(cfg *Config) {
 
 	//TODO: sort out path to the dashboard - this needs to be managed by a config when the dashboard is ready
-	buildPath := "/Users/maxbb/github/revitt/sft/web/dashboard/dist"
+
+	// Q for BOSSMAX: why is it we can't just grab the working directory and use that to find the buildpath (i.e. because the
+	// build files will be within the library which is surely in the same place regardless of the application that is
+	// implementing SFT)?
+
+	// hardCodedPath := "/Users/maxbb/github/revitt/sft/web/dashboard/dist"
+
+	buildPath := filepath.Join(cfg.Buildpath, "/sft/web/dashboard/dist")
+
+	fmt.Println("buildpath is: ", buildPath)
 
 	fs := http.FileServer(http.Dir(buildPath))
 
-	// this handler function is designed to allow us to serve a react app with react router
+	// this handler function is necessary as we are serving a single page application (via React Router)
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		// Check if the requested file exists
 		path := buildPath + r.URL.Path
@@ -46,15 +63,16 @@ func StartDashboard(port string) {
 		}
 	})
 
-	log.Printf("Starting dashboard server on http://hello:%s/", port)
-	err := http.ListenAndServe(":"+port, nil)
+	logger.Log().Info("Starting dashboard server", zap.String("url", "http://localhost:"+cfg.Port))
+
+	err := http.ListenAndServe(":"+cfg.Port, nil)
 	if err != nil {
 		log.Fatalf("Dashboard server failed to start: %v", err)
 	}
 }
 
 func (h *Handler) SetupRoutes(router chi.Router) {
-	log.Println("setting up feature toggle routes.")
+	logger.Log().Info("setting up feature toggle routes.")
 
 	router.Group(func(r chi.Router) {
 		r.Route("/toggles", func(r chi.Router) {
@@ -79,7 +97,7 @@ func (h *Handler) GetAllToggles(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) CreateToggle(w http.ResponseWriter, r *http.Request) {
-	log.Println("creating toggle")
+	logger.Log().Info("Creating toggle")
 	toggleDto := &ToggleDto{}
 
 	err := json.NewDecoder(r.Body).Decode(toggleDto)
@@ -95,7 +113,7 @@ func (h *Handler) CreateToggle(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) ToggleFeature(w http.ResponseWriter, r *http.Request) {
-	log.Println("toggling feature")
+	logger.Log().Info("toggling feature")
 	toggleId, err := uuid.Parse(chi.URLParam(r, "toggle-id"))
 	if err != nil {
 		message := fmt.Errorf("error parsing uuid: %w", err)
@@ -114,7 +132,7 @@ func (h *Handler) ToggleFeature(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) DeleteToggle(w http.ResponseWriter, r *http.Request) {
-	log.Println("deleting toggle")
+	logger.Log().Info("deleting toggle")
 	toggleId, err := uuid.Parse(chi.URLParam(r, "toggle-id"))
 	if err != nil {
 		message := fmt.Errorf("error parsing uuid: %w", err)

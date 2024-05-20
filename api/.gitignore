@@ -6,3 +6,5 @@ db/
 docker-compose.yml
 Makefile
 scripts/
+
+MaxNotes.md
