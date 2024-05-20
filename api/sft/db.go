@@ -63,9 +63,8 @@ func (db *Db) CreateToggle(ctx context.Context, toggleDto ToggleDto) (*ToggleId,
 	return toggleId, nil
 }
 
-func (db *Db) DisableFeature(ctx context.Context, toggleId uuid.UUID) error {
-
-	sql := `update sft.feature_toggles set enabled = false where id = $1`
+func (db *Db) ToggleFeature(ctx context.Context, toggleId uuid.UUID) error {
+	sql := `update sft.feature_toggles set enabled = NOT enabled where id = $1`
 
 	tx, err := utils.TxBegin(ctx, db.pool)
 	if err != nil {
@@ -90,40 +89,14 @@ func (db *Db) DisableFeature(ctx context.Context, toggleId uuid.UUID) error {
 	return nil
 }
 
-func (db *Db) EnableFeature(ctx context.Context, toggleId uuid.UUID) error {
-	sql := `update sft.feature_toggles set enabled = true where id = $1`
-
-	tx, err := utils.TxBegin(ctx, db.pool)
-	if err != nil {
-		return fmt.Errorf("error updating toggle: %w", err)
-	}
-	defer utils.TxDefer(tx, ctx)
-
-	result, err := tx.Exec(ctx, sql, toggleId)
-	if err != nil {
-		return err
-	}
-
-	if result.RowsAffected() == 0 {
-		return fmt.Errorf("no rows affected")
-	}
-
-	if err = tx.Commit(ctx); err != nil {
-		return fmt.Errorf("error committing transaction: %w", err)
-	}
-
-	return nil
-}
-
 func (db *Db) GetAllToggles(ctx context.Context) ([]*Toggle, error) {
-	sql := `select * from sft.feature_toggles`
+	sql := `select id, feature_name, toggle_meta, enabled from sft.feature_toggles`
 
 	tx, err := utils.TxBegin(ctx, db.pool)
-	defer utils.TxDefer(tx, ctx)
-
 	if err != nil {
 		return nil, err
 	}
+	defer utils.TxDefer(tx, ctx)
 
 	var toggles []*Toggle
 	var rows pgx.Rows
@@ -141,3 +114,67 @@ func (db *Db) GetAllToggles(ctx context.Context) ([]*Toggle, error) {
 
 	return toggles, nil
 }
+
+func (db *Db) DeleteToggle(ctx context.Context, toggleId uuid.UUID) error {
+	sql := `delete from sft.feature_toggles where id = $1`
+
+	tx, err := utils.TxBegin(ctx, db.pool)
+	if err != nil {
+		return err
+	}
+	defer utils.TxDefer(tx, ctx)
+
+	result, err := tx.Exec(ctx, sql, toggleId)
+	_ = result
+	if err != nil {
+		return fmt.Errorf("error removing toggle: %w", err)
+	}
+
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("error commiting db transaction: %w", err)
+	}
+
+	return nil
+
+}
+
+func (db *Db) CheckFeatureIsEnabled(ctx context.Context, featureName string) (*Enabled, error) {
+
+	enabled := &Enabled{}
+
+	// I've added this so that if it errors out before completion, a feature isn't automatically disabled.
+	// TODO: maybe this isn't the best approach - come up with a better one.
+
+	enabled.Enabled = true
+	// find toggle by feature name
+	sql := `select enabled from sft.feature_toggles where feature_name = $1`
+
+	tx, err := utils.TxBegin(ctx, db.pool)
+	if err != nil {
+		return enabled, err
+	}
+	defer utils.TxDefer(tx, ctx)
+
+	row := tx.QueryRow(ctx, sql, featureName)
+
+	err = row.Scan(&enabled.Enabled)
+	if err != nil {
+		if err == pgx.ErrNoRows {
+			enabled.Enabled = true
+			return enabled, nil
+		}
+		return enabled, nil
+	}
+
+	return enabled, nil
+}
+
+//// toggle check code for within parent:
+//enabled, err := h.sft.CheckFeatureIsEnabled(r.Context(), "Add task")
+//if err != nil {
+//log.Println("error checking feature: ", err)
+//}
+//if enabled.Enabled != true {
+//return
+//}
