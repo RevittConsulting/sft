@@ -8,9 +8,10 @@ import { DeleteToggleDialog } from "./dialogs/deleteToggleDialog";
 
 interface ToggleItemProps {
   toggle: Toggle;
+  deleteToggleDash: (toggleId: string) => void;
 }
 
-const ToggleItem: React.FC<ToggleItemProps> = ({toggle}) => {
+const ToggleItem: React.FC<ToggleItemProps> = ({toggle, deleteToggleDash}) => {
   const [localToggle, setLocalToggle] = useState<Toggle>(toggle);
 
   useEffect(() => {
@@ -35,9 +36,10 @@ const ToggleItem: React.FC<ToggleItemProps> = ({toggle}) => {
     console.log("trying to delete");
     try {
       const response = await deleteToggle(localToggle.id);
-      if (response) {
+      if (response) { 
         console.log(response);
       }
+      deleteToggleDash(localToggle.id);
     } catch (error) {
       console.log("Error deleting feature:", error);
     }

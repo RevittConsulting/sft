@@ -6,7 +6,6 @@ const toggles_url = "http://localhost:80/api/sft/v1/toggles"
 export const fetchToggles = async () => {
     try {
         const response = await axios.get(`${toggles_url}`)
-        console.log(response)
         return response
     } catch (error) {
         console.error("Error fetching toggles:", error)
