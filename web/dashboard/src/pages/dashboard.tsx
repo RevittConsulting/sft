@@ -25,6 +25,13 @@ export default function Dashboard() {
     navigate("/create");
   };
 
+  const handleDeleteToggleDash = async (toggleId: string) => {
+    const newToggles = toggles?.filter((toggle) => toggle.id !== toggleId);
+    setToggles(newToggles);
+  }
+
+
+
   return (
     <div className="">
       <div className="px-10 flex items-center justify-start bg-gradient-to-l from-slate-700 to-slate-800 text-slate-100 h-24 font-medium">
@@ -36,7 +43,7 @@ export default function Dashboard() {
           <div className="hidden lg:block"><ToggleHeader/></div>
           {toggles &&
             toggles.map((toggle) => {
-              return <ToggleItem key={toggle.id} toggle={toggle} />;
+              return <ToggleItem key={toggle.id} toggle={toggle} deleteToggleDash={handleDeleteToggleDash}/>;
             })}
         </div>
         <Button onClick={handleAddToggle} className="w-48 h-20 text-2xl text-slate-100 fixed bottom-10 right-10 lg:right-20 ">

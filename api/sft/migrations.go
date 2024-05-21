@@ -4,6 +4,7 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"github.com/RevittConsulting/logger"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/tern/v2/migrate"
 	"io"
@@ -19,6 +20,7 @@ var migrationFiles embed.FS
 
 func RunDbMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 
+	logger.Log().Info("running SFT migrations")
 	// acquire connection
 	conn, err := pool.Acquire(ctx)
 	if err != nil {
@@ -33,8 +35,6 @@ func RunDbMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 
 	// identify migration directory
-	// TODO: Q: how does this link to the var migrationFiles in the embed.FS above?
-	// presumably there are other ways to identify the directory?
 	migrationRoot, _ := fs.Sub(migrationFiles, "db/migrations")
 
 	// Load the migrations from the directory
@@ -46,14 +46,14 @@ func RunDbMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	m := len(ternMigrator.Migrations)
 	_ = m
 
-	// Run the migrations
-	if err = ternMigrator.Migrate(ctx); err != nil {
-		return fmt.Errorf("failed to run migrations: %w", err)
-	}
-
 	// add a callback to OnStart, per the tern Migrate file
 	ternMigrator.OnStart = func(seq int32, name string, directionName string, sql string) {
 		log.Println(fmt.Sprintf("starting migration %d/%d %s %s", seq, m, name, directionName))
+	}
+
+	// Run the migrations
+	if err = ternMigrator.Migrate(ctx); err != nil {
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
 	return nil

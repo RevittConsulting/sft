@@ -2,9 +2,10 @@ tests/.env
 .DS_Store
 .idea/
 .vscode/
-db/
 docker-compose.yml
 Makefile
 scripts/
+testing_environment/
+
 
 MaxNotes.md
