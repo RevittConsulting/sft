@@ -9,6 +9,13 @@ create table if not exists sft.feature_toggles (
     enabled boolean not null default false
 );
 
+create table if not exists sft.users (
+    id uuid primary key default uuid_generate_v4(),
+    first_name text not null,
+    last_name text not null
+);
+
 ---- create above / drop below ----
 
 drop table if exists sft.feature_toggles;
+drop table if exists sft.users;

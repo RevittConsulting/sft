@@ -23,7 +23,6 @@ type Service struct {
 
 // based on srt, takes a db, context, and pool, all of which that are created in the calling application, returns a service
 func NewService(db ISimpleFeatureToggleDb, ctx context.Context, pool *pgxpool.Pool) *Service {
-	log.Println("new service!")
 
 	s := &Service{
 		db: db,
