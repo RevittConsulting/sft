@@ -36,12 +36,6 @@ func NewHandler(r chi.Router, s *Service, cfg *Config) *Handler {
 
 func StartDashboard(cfg *Config) {
 
-	//TODO: sort out path to the dashboard - this needs to be managed by a config when the dashboard is ready
-
-	// Q for BOSSMAX: why is it we can't just grab the working directory and use that to find the buildpath (i.e. because the
-	// build files will be within the library which is surely in the same place regardless of the application that is
-	// implementing SFT)?
-
 	// hardCodedPath := "/Users/maxbb/github/revitt/sft/web/dashboard/dist"
 
 	buildPath := filepath.Join(cfg.Buildpath, "/sft/web/dashboard/dist")

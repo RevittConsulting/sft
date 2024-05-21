@@ -33,8 +33,6 @@ func RunDbMigrations(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 
 	// identify migration directory
-	// TODO: Q: how does this link to the var migrationFiles in the embed.FS above?
-	// presumably there are other ways to identify the directory?
 	migrationRoot, _ := fs.Sub(migrationFiles, "db/migrations")
 
 	// Load the migrations from the directory
