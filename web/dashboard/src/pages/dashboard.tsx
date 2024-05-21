@@ -34,9 +34,6 @@ export default function Dashboard() {
 
   return (
     <div className="">
-      <div className="px-10 flex items-center justify-start bg-gradient-to-l from-slate-700 to-slate-800 text-slate-100 h-24 font-medium">
-        <h1 className="text-2xl">Simple feature toggles</h1>
-      </div>
 
       <div className="flex flex-col items-center">
         <div className="px-8 pt-6 lg:w-[1000px]">
