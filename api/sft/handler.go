@@ -1,17 +1,17 @@
 package sft
 
 import (
+	"embed"
 	"encoding/json"
 	"fmt"
 	"github.com/RevittConsulting/logger"
 	"github.com/RevittConsulting/sft/sft/utils"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"go.uber.org/zap"
+	"io/fs"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
+	"strings"
 )
 
 // TODO: add some form of auth
@@ -21,8 +21,9 @@ type Handler struct {
 }
 
 type Config struct {
-	Buildpath string
-	Port      string
+	Buildpath       string
+	Port            string
+	ApplicationName string
 }
 
 func NewHandler(r chi.Router, s *Service, cfg *Config) *Handler {
@@ -34,35 +35,226 @@ func NewHandler(r chi.Router, s *Service, cfg *Config) *Handler {
 	return h
 }
 
+//go:embed build_artifacts/dist/*
+var web embed.FS
+
 func StartDashboard(cfg *Config) {
 
-	// hardCodedPath := "/Users/maxbb/github/revitt/sft/web/dashboard/dist"
+	//// Create a sub-filesystem from the embedded files, pointing directly at the dist folder
+	//distFS, err := fs.Sub(web, "build_artifacts/dist")
+	//if err != nil {
+	//	log.Fatalf("Failed to initialize embedded filesystem: %v", err)
+	//}
+	//
+	//// File server to serve static assets
+	//staticHandler := http.FileServer(http.FS(distFS))
+	//
+	//// Custom handler to deal with SPA routing
+	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	//	// Log the incoming request URL
+	//	log.Printf("Requested URL: %s", r.URL.Path)
+	//
+	//	// Normalize the path to avoid bypassing the handler logic
+	//	path := strings.TrimPrefix(r.URL.Path, "/")
+	//	if path == "" || path == "dashboard" || path == "create" {
+	//		// Log decision to serve index.html for SPA paths
+	//		log.Printf("Serving index.html for SPA route: %s", path)
+	//
+	//		// Directly serve index.html for SPA routes and root
+	//		path = "index.html"
+	//
+	//		// Check if index.html exists in the embedded file system
+	//		file, err := distFS.Open(path)
+	//		if err != nil {
+	//			// Log if there's an error opening index.html
+	//			log.Printf("Error opening index.html: %v", err)
+	//			http.Error(w, "Internal server error", http.StatusInternalServerError)
+	//			return
+	//		}
+	//		fileStat, err := file.Stat()
+	//		if err != nil {
+	//			log.Printf("Error getting stats for index.html: %v", err)
+	//			http.Error(w, "Internal server error", http.StatusInternalServerError)
+	//			return
+	//		}
+	//		// Log file details
+	//		log.Printf("Serving file: %s, Size: %d", fileStat.Name(), fileStat.Size())
+	//		http.StripPrefix("/", staticHandler).ServeHTTP(w, r)
+	//	}
+	//
+	//	// Attempt to open the file
+	//	_, err := distFS.Open(path)
+	//	if err != nil {
+	//		// Log file open error
+	//		log.Printf("Error opening file '%s': %v", path, err)
+	//		// Fallback to serving index.html if there's an error
+	//		http.ServeFile(w, r, "build_artifacts/dist/index.html")
+	//		return
+	//	}
+	//
+	//	// Log static file serving
+	//	log.Printf("Serving static file: %s", path)
+	//	staticHandler.ServeHTTP(w, r)
+	//})
+	//
+	//// Start the server
+	//logger.Log().Info("Starting dashboard server", zap.String("url", "http://localhost:"+cfg.Port))
+	//err = http.ListenAndServe(":"+cfg.Port, nil)
+	//if err != nil {
+	//	log.Fatalf("Dashboard server failed to start: %v", err)
+	//}
 
-	buildPath := filepath.Join(cfg.Buildpath, "/sft/web/dashboard/dist")
-
-	fmt.Println("buildpath is: ", buildPath)
-
-	fs := http.FileServer(http.Dir(buildPath))
-
-	// this handler function is necessary as we are serving a single page application (via React Router)
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		// Check if the requested file exists
-		path := buildPath + r.URL.Path
-		if _, err := os.Stat(path); os.IsNotExist(err) {
-			// If the file does not exist, serve index.html
-			http.ServeFile(w, r, buildPath+"/index.html")
-		} else {
-			// Otherwise, serve the file
-			fs.ServeHTTP(w, r)
-		}
-	})
-
-	logger.Log().Info("Starting dashboard server", zap.String("url", "http://localhost:"+cfg.Port))
-
-	err := http.ListenAndServe(":"+cfg.Port, nil)
+	entries, err := fs.ReadDir(web, "build_artifacts/dist")
 	if err != nil {
-		log.Fatalf("Dashboard server failed to start: %v", err)
+		log.Fatal(err)
 	}
+
+	fmt.Println("Contents of dist:")
+	for _, entry := range entries {
+		fmt.Println(entry.Name())
+	}
+
+	fsys, err := fs.Sub(web, "build_artifacts/dist")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	http.Handle("/", spaHandler(http.FS(fsys), cfg.Buildpath))
+
+	log.Println("Serving on http://localhost:6969")
+	err = http.ListenAndServe(":6969", nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	//// SPA METHOD THAT ONLY SERVES THE ROOT PAGE!!!
+	//// Create a sub-filesystem from the embedded files, pointing directly at the dist folder
+	//distFS, err := fs.Sub(web, "build_artifacts/dist")
+	//if err != nil {
+	//	log.Fatalf("Failed to initialize embedded filesystem: %v", err)
+	//}
+	//
+	//// File server to serve static assets
+	//staticHandler := http.FileServer(http.FS(distFS))
+	//
+	//// Custom handler to deal with SPA routing
+	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	//	// Log the incoming request URL
+	//	log.Printf("Requested URL: %s", r.URL.Path)
+	//
+	//	// Normalize the path to avoid bypassing the handler logic
+	//	path := strings.TrimPrefix(r.URL.Path, "/")
+	//	if path == "" || path == "dashboard" || path == "create" {
+	//		// Log decision to serve index.html for SPA paths
+	//		log.Printf("Serving index.html for SPA route: %s", path)
+	//
+	//		// Directly serve index.html for SPA routes and root
+	//		path = "index.html"
+	//
+	//		// Check if index.html exists in the embedded file system
+	//		file, err := distFS.Open(path)
+	//		if err != nil {
+	//			// Log if there's an error opening index.html
+	//			log.Printf("Error opening index.html: %v", err)
+	//			http.Error(w, "Internal server error", http.StatusInternalServerError)
+	//			return
+	//		}
+	//		fileStat, err := file.Stat()
+	//		if err != nil {
+	//			log.Printf("Error getting stats for index.html: %v", err)
+	//			http.Error(w, "Internal server error", http.StatusInternalServerError)
+	//			return
+	//		}
+	//		// Log file details
+	//		log.Printf("Serving file: %s, Size: %d", fileStat.Name(), fileStat.Size())
+	//		http.StripPrefix("/", staticHandler).ServeHTTP(w, r)
+	//	}
+	//
+	//	// Attempt to open the file
+	//	_, err := distFS.Open(path)
+	//	if err != nil {
+	//		// Log file open error
+	//		log.Printf("Error opening file '%s': %v", path, err)
+	//		// Fallback to serving index.html if there's an error
+	//		http.ServeFile(w, r, "build_artifacts/dist/index.html")
+	//		return
+	//	}
+	//
+	//	// Log static file serving
+	//	log.Printf("Serving static file: %s", path)
+	//	staticHandler.ServeHTTP(w, r)
+	//})
+	//
+	//// Start the server
+	//logger.Log().Info("Starting dashboard server", zap.String("url", "http://localhost:"+cfg.Port))
+	//err = http.ListenAndServe(":"+cfg.Port, nil)
+	//if err != nil {
+	//	log.Fatalf("Dashboard server failed to start: %v", err)
+	//}
+
+	//// EMBED METHOD, SHOWS A SINGLE INDEX.HTML
+	//
+	//dist, _ := fs.Sub(web, "build_artifacts/dist")
+	//
+	//http.Handle("/", http.FileServer(http.FS(dist)))
+	//
+	//logger.Log().Info("Starting dashboard server", zap.String("url", "http://localhost:"+cfg.Port))
+	//
+	//err := http.ListenAndServe(":"+cfg.Port, nil)
+	//if err != nil {
+	//	log.Fatalf("Dashboard server failed to start: %v", err)
+	//}
+
+	// ORIGINAL METHOD
+	//// hardCodedPath := "/Users/maxbb/github/revitt/sft/web/dashboard/dist"
+	//
+	//buildPath := filepath.Join(cfg.Buildpath, "/sft/web/dashboard/dist")
+	//
+	//fmt.Println("buildpath is: ", buildPath)
+	//
+	//fs := http.FileServer(http.Dir(buildPath))
+	//
+	//// this handler function is necessary as we are serving a single page application (via React Router)
+	//http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	//	// Check if the requested file exists
+	//	path := buildPath + r.URL.Path
+	//	if _, err := os.Stat(path); os.IsNotExist(err) {
+	//		// If the file does not exist, serve index.html
+	//		http.ServeFile(w, r, buildPath+"/index.html")
+	//	} else {
+	//		// Otherwise, serve the file
+	//		fs.ServeHTTP(w, r)
+	//	}
+	//})
+	//
+	//logger.Log().Info("Starting dashboard server", zap.String("url", "http://localhost:"+cfg.Port))
+	//
+	//err := http.ListenAndServe(":"+cfg.Port, nil)
+	//if err != nil {
+	//	log.Fatalf("Dashboard server failed to start: %v", err)
+	//}
+
+}
+
+func spaHandler(fsys http.FileSystem, buildPath string) http.Handler {
+	fmt.Println("hello from the function")
+	//fileServer := http.FileServer(fsys) // Create the file server for the embedded filesystem
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		path := r.URL.Path
+		fmt.Println("243", path)
+
+		// Check if the file exists in the embedded filesystem
+		_, err := fsys.Open(strings.TrimPrefix(path, "/"))
+		if err != nil {
+			// If the file does not exist, serve the index.html
+			http.ServeFile(w, r, "/index.html")
+			return
+		}
+
+		// Otherwise, serve the file
+		http.FileServer(fsys).ServeHTTP(w, r)
+	})
 }
 
 func (h *Handler) SetupRoutes(router chi.Router) {
