@@ -1,7 +1,7 @@
 import { ToggleDto } from "@/types/toggles";
 import axios from "axios";
 
-const toggles_url = "http://localhost:80/api/sft/v1/toggles"
+let toggles_url = ""
 
 export const fetchToggles = async () => {
     try {
